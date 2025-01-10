@@ -12,6 +12,7 @@ from datetime import datetime
 import fosslight_util.constant as constant
 from fosslight_util.set_log import init_log
 from fosslight_util.timer_thread import TimerThread
+from fosslight_util.scanned_result import excluding_files
 from ._help import print_version, print_help_msg_source_scanner
 from ._license_matched import get_license_list_to_print
 from fosslight_util.output_format import check_output_formats_v2, write_output_file
@@ -84,6 +85,7 @@ def main() -> None:
         path_to_scan = ''.join(args.path)
     if args.exclude:
         path_to_exclude = args.exclude
+        print("path_to_exclude in main : ", path_to_exclude)
     if args.json:
         write_json_file = True
     output_file_name = ''.join(args.output)
@@ -111,6 +113,7 @@ def main() -> None:
         result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
                               print_matched_text, formats, time_out, correct_mode, correct_filepath,
                               selected_scanner, path_to_exclude)
+        sys.exit(0)
 
         _result_log["Scan Result"] = result[1]
 
@@ -329,6 +332,34 @@ def run_scanners(
 
     logger, result_log = init_log(os.path.join(output_path, f"fosslight_log_src_{start_time}.txt"),
                                   True, logging.INFO, logging.DEBUG, PKG_NAME, path_to_scan, path_to_exclude)
+    # print("path_to_exclude : ", type(path_to_exclude), "||", path_to_exclude)
+    # print("path_to_scan : ", type(path_to_scan), " || ", path_to_scan)
+
+    # excluded_file_list = excluding_files(path_to_exclude, path_to_scan)
+    # no = 0
+    # print("excluding_file_list : ", type(excluded_file_list))
+    # print(excluded_file_list)
+    # for excluded_file in excluded_file_list:
+    #     no = no + 1
+    #     print(no, ". ", excluded_file)
+
+# if __name__ == "__main__":
+    test_cases = [
+        (["file1.js", "file2.py"], "./exclude_test"),
+        (["sample/*"], "./exclude_test"),
+        (["sample/subfolder/*"], "./exclude_test"),
+        (["*.py"], "./exclude_test"),
+        (["subfolder"], "./exclude_test"),
+    ]
+
+    for i, (patterns, path_to_scan) in enumerate(test_cases, 1):
+        print(f"\n=== 케이스 {i} ===", patterns)
+        excluding = excluding_files(patterns, path_to_scan)
+        for r, re in enumerate(excluding, 1):
+            print(f"{r}. {re}")
+        # print("\n".join(result))
+
+    return 0
 
     if '.xlsx' not in output_extensions and print_matched_text:
         logger.warning("-m option is only available for excel.")
