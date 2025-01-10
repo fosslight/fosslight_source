@@ -26,6 +26,7 @@ from .run_spdx_extractor import get_spdx_downloads
 from ._scan_item import SourceItem
 from fosslight_util.oss_item import ScannerItem
 from typing import Tuple
+import time
 
 SRC_SHEET_NAME = 'SRC_FL_Source'
 SCANOSS_HEADER = {SRC_SHEET_NAME: ['ID', 'Source Path', 'OSS Name',
@@ -85,7 +86,6 @@ def main() -> None:
         path_to_scan = ''.join(args.path)
     if args.exclude:
         path_to_exclude = args.exclude
-        print("path_to_exclude in main : ", path_to_exclude)
     if args.json:
         write_json_file = True
     output_file_name = ''.join(args.output)
@@ -110,9 +110,26 @@ def main() -> None:
 
     if os.path.isdir(path_to_scan):
         result = []
-        result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
-                              print_matched_text, formats, time_out, correct_mode, correct_filepath,
-                              selected_scanner, path_to_exclude)
+
+        test_cases = [
+            (["file1.js", "file2.py"], "./exclude_test"),
+            (["sample/*"], "./exclude_test"),
+            (["sample/subfolder/*"], "./exclude_test"),
+            (["*.py"], "./exclude_test"),
+            (["subfolder"], "./exclude_test"),
+        ]
+        # no = 0
+            # for i, (patterns, path_to_scan) in enumerate(test_cases, 1):
+
+        for i, (path_to_exclude, path_to_scan) in enumerate(test_cases, 1):
+            print(f"\n=== 케이스 {i} ===", path_to_exclude)
+            result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
+                                  print_matched_text, formats, time_out, correct_mode, correct_filepath,
+                                  selected_scanner, path_to_exclude)
+            time.sleep(40)
+        # result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
+        #                       print_matched_text, formats, time_out, correct_mode, correct_filepath,
+        #                       selected_scanner, path_to_exclude)
         sys.exit(0)
 
         _result_log["Scan Result"] = result[1]
@@ -264,7 +281,8 @@ def create_report_file(
     return scan_item
 
 
-def merge_results(scancode_result: list = [], scanoss_result: list = [], spdx_downloads: dict = {}) -> list:
+def merge_results(scancode_result: list = [], scanoss_result: list = [], spdx_downloads: dict = {}, excluded_file_list=[]) -> list:
+
     """
     Merge scanner results and spdx parsing result.
     :param scancode_result: list of scancode results in SourceItem.
@@ -287,6 +305,12 @@ def merge_results(scancode_result: list = [], scanoss_result: list = [], spdx_do
                 new_result_item = SourceItem(file_name)
                 new_result_item.download_location = download_location
                 scancode_result.append(new_result_item)
+
+    for i in range(len(scancode_result) - 1, -1, -1):  # Iterate from last to first
+        item_path = scancode_result[i].source_name_or_path  # Assuming SourceItem has 'file_path' attribute
+        if item_path in excluded_file_list:
+            print("EXCLUDING : ", item_path)
+            del scancode_result[i]  # Delete matching item
 
     for item in scancode_result:
         item.set_oss_item()
@@ -332,34 +356,7 @@ def run_scanners(
 
     logger, result_log = init_log(os.path.join(output_path, f"fosslight_log_src_{start_time}.txt"),
                                   True, logging.INFO, logging.DEBUG, PKG_NAME, path_to_scan, path_to_exclude)
-    # print("path_to_exclude : ", type(path_to_exclude), "||", path_to_exclude)
-    # print("path_to_scan : ", type(path_to_scan), " || ", path_to_scan)
-
-    # excluded_file_list = excluding_files(path_to_exclude, path_to_scan)
-    # no = 0
-    # print("excluding_file_list : ", type(excluded_file_list))
-    # print(excluded_file_list)
-    # for excluded_file in excluded_file_list:
-    #     no = no + 1
-    #     print(no, ". ", excluded_file)
-
-# if __name__ == "__main__":
-    test_cases = [
-        (["file1.js", "file2.py"], "./exclude_test"),
-        (["sample/*"], "./exclude_test"),
-        (["sample/subfolder/*"], "./exclude_test"),
-        (["*.py"], "./exclude_test"),
-        (["subfolder"], "./exclude_test"),
-    ]
-
-    for i, (patterns, path_to_scan) in enumerate(test_cases, 1):
-        print(f"\n=== 케이스 {i} ===", patterns)
-        excluding = excluding_files(patterns, path_to_scan)
-        for r, re in enumerate(excluding, 1):
-            print(f"{r}. {re}")
-        # print("\n".join(result))
-
-    return 0
+    excluded_file_list = excluding_files(path_to_exclude, path_to_scan)
 
     if '.xlsx' not in output_extensions and print_matched_text:
         logger.warning("-m option is only available for excel.")
@@ -376,7 +373,7 @@ def run_scanners(
                                             path_to_exclude)
         if selected_scanner in SCANNER_TYPE:
             spdx_downloads = get_spdx_downloads(path_to_scan, path_to_exclude)
-            merged_result = merge_results(scancode_result, scanoss_result, spdx_downloads)
+            merged_result = merge_results(scancode_result, scanoss_result, spdx_downloads, excluded_file_list)
             scan_item = create_report_file(start_time, merged_result, license_list, scanoss_result, selected_scanner,
                                            print_matched_text, output_path, output_files, output_extensions, correct_mode,
                                            correct_filepath, path_to_scan, path_to_exclude, formats)
