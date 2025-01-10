@@ -26,7 +26,6 @@ from .run_spdx_extractor import get_spdx_downloads
 from ._scan_item import SourceItem
 from fosslight_util.oss_item import ScannerItem
 from typing import Tuple
-import time
 
 SRC_SHEET_NAME = 'SRC_FL_Source'
 SCANOSS_HEADER = {SRC_SHEET_NAME: ['ID', 'Source Path', 'OSS Name',
@@ -110,26 +109,9 @@ def main() -> None:
 
     if os.path.isdir(path_to_scan):
         result = []
-
-        test_cases = [
-            (["file1.js", "file2.py"], "./exclude_test"),
-            (["sample/*"], "./exclude_test"),
-            (["sample/subfolder/*"], "./exclude_test"),
-            (["*.py"], "./exclude_test"),
-            (["subfolder"], "./exclude_test"),
-        ]
-        # no = 0
-            # for i, (patterns, path_to_scan) in enumerate(test_cases, 1):
-
-        for i, (path_to_exclude, path_to_scan) in enumerate(test_cases, 1):
-            print(f"\n=== 케이스 {i} ===", path_to_exclude)
-            result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
-                                  print_matched_text, formats, time_out, correct_mode, correct_filepath,
-                                  selected_scanner, path_to_exclude)
-            time.sleep(40)
-        # result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
-        #                       print_matched_text, formats, time_out, correct_mode, correct_filepath,
-        #                       selected_scanner, path_to_exclude)
+        result = run_scanners(path_to_scan, output_file_name, write_json_file, core, True,
+                              print_matched_text, formats, time_out, correct_mode, correct_filepath,
+                              selected_scanner, path_to_exclude)
         sys.exit(0)
 
         _result_log["Scan Result"] = result[1]
@@ -309,7 +291,6 @@ def merge_results(scancode_result: list = [], scanoss_result: list = [], spdx_do
     for i in range(len(scancode_result) - 1, -1, -1):  # Iterate from last to first
         item_path = scancode_result[i].source_name_or_path  # Assuming SourceItem has 'file_path' attribute
         if item_path in excluded_file_list:
-            print("EXCLUDING : ", item_path)
             del scancode_result[i]  # Delete matching item
 
     for item in scancode_result:
